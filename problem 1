@@ -1,0 +1,37 @@
+#(A)
+import math
+X = {'a': 0.2,
+     'b': 0.05,
+     'c': 0.005,
+     'd': 0.2,
+     'e': 0.3,
+     'f': 0.05,
+     'g': 0.045,
+     'h': 0.15}
+
+H = 0
+for i in X.values():
+    H += i*math.log(i)
+print(H)
+#(c)
+huffman_dic = {
+    'a' : '00',
+    'd' : '01',
+    'e' : '10',
+    'h' : '110',
+    'f' : '1110',
+    'b' : '11110',
+    'g' : '111110',
+    'c' : '111111',
+}
+k = 0
+for i in huffman_dic.values():
+    k += 2**(-len(i))
+    #print (1/(2**(len(i))),len(i),2**len(i),(2**(-len(i))))
+print(k)
+#print (len(huffman_dic['a']))
+#(d)
+avgl = 0
+for i in huffman_dic.keys():
+    avgl += len(huffman_dic[i])*X[i]
+print (avgl)
