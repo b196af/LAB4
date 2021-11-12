@@ -1,0 +1,517 @@
+#(a)
+symbols = { 's0', 's1', 's2', 's3', 's4' };
+prob = [ 0.26, 0.25, 0.20, 0.15, 0.14 ];
+
+for i = 1:length(symbols)
+	sorted_str{i} = symbols(i);
+end
+
+% Save initial set of symbols and probabilities for later use
+init_str = sorted_str;
+init_prob = prob;
+
+sorted_prob = prob;
+rear = 1;
+
+child = {};
+counnnt = 1
+while counnnt < length(sorted_prob)+1
+    child (counnnt,1) = symbols(counnnt);
+    child (counnnt,2) = {0};
+    child (counnnt,3) = {0};
+    counnnt = counnnt+1;
+end 
+
+while (length(sorted_prob) > 1)
+	% Sort probs
+	[sorted_prob,indeces] = sort(sorted_prob,'ascend');
+
+	% Sort string based on indeces
+	sorted_str = sorted_str(indeces);
+
+	% Create new symbol
+
+	new_node = {string(sorted_str{2})+string(sorted_str{1})};
+    child (counnnt,1) = new_node;
+    child (counnnt,2) = {sorted_str{2}};
+    child (counnnt,3) = {sorted_str{1}};
+    counnnt = counnnt+1;
+	new_prob = sum(sorted_prob(1:2));
+
+	% Dequeue used symbols from "old" queue
+	sorted_str =  sorted_str(3:length(sorted_str));
+	sorted_prob = sorted_prob(3:length(sorted_prob));
+
+	% Add new symbol back to "old" queue
+	sorted_str = [sorted_str, new_node];
+	sorted_prob = [sorted_prob, new_prob];
+
+	% Add new symbol to "new" queue
+	newq_str(rear) = new_node;
+	newq_prob(rear) = new_prob;
+	rear = rear + 1;
+end
+tree = [newq_str,init_str];
+tree_prob = [newq_prob, init_prob];
+
+% Sort all tree elements
+[sorted_tree_prob,indeces] = sort(tree_prob,'descend');
+sorted_tree = tree(indeces);
+
+parent(1) = 0;
+num_children = 2;
+for i = 2:length(sorted_tree)
+	% Extract my symbol
+	me = sorted_tree{i};
+
+	% Find my parent's symbol (search until shortest match is found)
+	count = 1;
+	parent_maybe = string(sorted_tree{i-count});
+	diff = strfind(parent_maybe,me);
+	while (isempty(diff))
+		count = count + 1;
+		parent_maybe = string(sorted_tree{i-count});
+		diff = strfind(parent_maybe,me);
+	end
+	parent(i) = i - count;
+end
+
+temp = sorted_tree{6};
+sorted_tree{6} = sorted_tree{7};
+sorted_tree{7} = temp;
+
+
+treeplot(parent);
+title(strcat('Huffman Coding Tree - "',symbols,'"'));
+
+display(sorted_tree)
+display(sorted_tree_prob)
+
+[xs,ys,h,s] = treelayout(parent);
+text(xs,ys,sorted_tree);
+
+for i = 2:length(sorted_tree)
+	% Get my coordinate
+	my_x = xs(i);
+	my_y = ys(i);
+
+	% Get parent coordinate
+	parent_x = xs(parent(i));
+	parent_y = ys(parent(i));
+
+	% Calculate weight coordinate (midpoint)
+	mid_x = (my_x + parent_x)/2;
+	mid_y = (my_y + parent_y)/2;
+
+	% Calculate weight (positive slope = 1, negative = 0)
+	slope  = (parent_y - my_y)/(parent_x - my_x);
+	if (slope > 0)
+		weight(i) = 0;
+	else
+		weight(i) = 1;
+	end
+	text(mid_x,mid_y,num2str(weight(i)));
+end
+
+for i = 1:length(sorted_tree)
+	% Initialize code
+	code{i} = '';
+
+	% Loop until root is found
+	index = i;
+	p = parent(index);
+	while(p ~= 0)
+		% Turn weight into code symbol
+		w = num2str(weight(index));
+
+		% Concatenate code symbol
+		code{i} = strcat(w,code{i});
+
+		% Continue towards root
+		index = parent(index);
+		p = parent(index);
+	end
+end
+
+codeBook = [sorted_tree', code']
+
+dict = cell(length(sorted_tree),5);
+dict(:,1) = sorted_tree;
+for i = 1:length(sorted_tree)
+    dict(i,2) = {sorted_tree_prob(i)};
+end
+
+for i = 1:length(sorted_tree)
+    for j = 1:length(sorted_tree)
+        if string(child(j)) == string(dict(i))
+            for k = 1:length(sorted_tree)
+                if string(child(j,2)) == string(dict(k,1))
+                    dict (i,3) = {k};
+                elseif string(child(j,3)) == string(dict(k,1))
+                    dict (i,4) = {k};
+                end
+            end
+        end
+    end
+end 
+dict(:,5) = code;
+disp (dict)
+
+#(b)
+
+symbols = {'a','b','c','d','e','f','g','h'}
+prob =[0.2,0.05,0.005,0.2,0.3,0.05,0.045,0.15]
+
+%symbols = 'jason'
+
+% function dict = huffman_dict(symbols, prob)
+for i = 1:length(symbols)
+	sorted_str{i} = symbols(i);
+end
+
+% Save initial set of symbols and probabilities for later use
+init_str = sorted_str;
+init_prob = prob;
+
+sorted_prob = prob;
+rear = 1;
+
+child = {};
+counnnt = 1
+while counnnt < length(sorted_prob)+1
+    child (counnnt,1) = symbols(counnnt);
+    child (counnnt,2) = {0};
+    child (counnnt,3) = {0};
+    counnnt = counnnt+1;
+end 
+
+while (length(sorted_prob) > 1)
+	% Sort probs
+	[sorted_prob,indeces] = sort(sorted_prob,'ascend');
+
+	% Sort string based on indeces
+	sorted_str = sorted_str(indeces);
+
+	% Create new symbol
+
+	new_node = {string(sorted_str{2})+string(sorted_str{1})};
+    child (counnnt,1) = new_node;
+    child (counnnt,2) = {sorted_str{2}};
+    child (counnnt,3) = {sorted_str{1}};
+    counnnt = counnnt+1;
+	new_prob = sum(sorted_prob(1:2));
+
+	% Dequeue used symbols from "old" queue
+	sorted_str =  sorted_str(3:length(sorted_str));
+	sorted_prob = sorted_prob(3:length(sorted_prob));
+
+	% Add new symbol back to "old" queue
+	sorted_str = [sorted_str, new_node];
+	sorted_prob = [sorted_prob, new_prob];
+
+	% Add new symbol to "new" queue
+	newq_str(rear) = new_node;
+	newq_prob(rear) = new_prob;
+	rear = rear + 1;
+end
+tree = [newq_str,init_str];
+tree_prob = [newq_prob, init_prob];
+
+% Sort all tree elements
+[sorted_tree_prob,indeces] = sort(tree_prob,'descend');
+sorted_tree = tree(indeces);
+
+parent(1) = 0;
+num_children = 2;
+for i = 2:length(sorted_tree)
+	% Extract my symbol
+	me = sorted_tree{i};
+
+	% Find my parent's symbol (search until shortest match is found)
+	count = 1;
+	parent_maybe = string(sorted_tree{i-count});
+	diff = strfind(parent_maybe,me);
+	while (isempty(diff))
+		count = count + 1;
+		parent_maybe = string(sorted_tree{i-count});
+		diff = strfind(parent_maybe,me);
+	end
+	parent(i) = i - count;
+end
+
+temp = sorted_tree{6};
+sorted_tree{6} = sorted_tree{7};
+sorted_tree{7} = temp;
+
+
+treeplot(parent);
+title(strcat('Huffman Coding Tree - "',symbols,'"'));
+
+display(sorted_tree)
+display(sorted_tree_prob)
+
+[xs,ys,h,s] = treelayout(parent);
+text(xs,ys,sorted_tree);
+
+for i = 2:length(sorted_tree)
+	% Get my coordinate
+	my_x = xs(i);
+	my_y = ys(i);
+
+	% Get parent coordinate
+	parent_x = xs(parent(i));
+	parent_y = ys(parent(i));
+
+	% Calculate weight coordinate (midpoint)
+	mid_x = (my_x + parent_x)/2;
+	mid_y = (my_y + parent_y)/2;
+
+	% Calculate weight (positive slope = 1, negative = 0)
+	slope  = (parent_y - my_y)/(parent_x - my_x);
+	if (slope > 0)
+		weight(i) = 0;
+	else
+		weight(i) = 1;
+	end
+	text(mid_x,mid_y,num2str(weight(i)));
+end
+
+for i = 1:length(sorted_tree)
+	% Initialize code
+	code{i} = '';
+
+	% Loop until root is found
+	index = i;
+	p = parent(index);
+	while(p ~= 0)
+		% Turn weight into code symbol
+		w = num2str(weight(index));
+
+		% Concatenate code symbol
+		code{i} = strcat(w,code{i});
+
+		% Continue towards root
+		index = parent(index);
+		p = parent(index);
+	end
+end
+
+codeBook = [sorted_tree', code']
+
+dict = cell(length(sorted_tree),5);
+dict(:,1) = sorted_tree;
+for i = 1:length(sorted_tree)
+    dict(i,2) = {sorted_tree_prob(i)};
+end
+
+for i = 1:length(sorted_tree)
+    for j = 1:length(sorted_tree)
+        if string(child(j)) == string(dict(i))
+            for k = 1:length(sorted_tree)
+                if string(child(j,2)) == string(dict(k,1))
+                    dict (i,3) = {k};
+                elseif string(child(j,3)) == string(dict(k,1))
+                    dict (i,4) = {k};
+                end
+            end
+        end
+    end
+end 
+dict(:,5) = code;
+
+%bin_seq = huffman_enc(sym_seq, dict);
+sym_seq = 'gacab'
+encoded_bit = '';
+for i = 1:length(sym_seq)
+    for j = 1:length(sorted_tree)
+        if string(dict{j,1}) == sym_seq(i)
+            encoded_bit = encoded_bit + string(dict{j,5});
+        end
+    end
+end
+disp(encoded_bit)
+
+
+
+#(c)
+
+
+symbols = {'a','b','c','d','e','f','g','h'}
+prob =[0.2,0.05,0.005,0.2,0.3,0.05,0.045,0.15]
+
+%symbols = 'jason'
+
+% function dict = huffman_dict(symbols, prob)
+for i = 1:length(symbols)
+	sorted_str{i} = symbols(i);
+end
+
+% Save initial set of symbols and probabilities for later use
+init_str = sorted_str;
+init_prob = prob;
+
+sorted_prob = prob;
+rear = 1;
+
+child = {};
+counnnt = 1
+while counnnt < length(sorted_prob)+1
+    child (counnnt,1) = symbols(counnnt);
+    child (counnnt,2) = {0};
+    child (counnnt,3) = {0};
+    counnnt = counnnt+1;
+end 
+
+while (length(sorted_prob) > 1)
+	% Sort probs
+	[sorted_prob,indeces] = sort(sorted_prob,'ascend');
+
+	% Sort string based on indeces
+	sorted_str = sorted_str(indeces);
+
+	% Create new symbol
+
+	new_node = {string(sorted_str{2})+string(sorted_str{1})};
+    child (counnnt,1) = new_node;
+    child (counnnt,2) = {sorted_str{2}};
+    child (counnnt,3) = {sorted_str{1}};
+    counnnt = counnnt+1;
+	new_prob = sum(sorted_prob(1:2));
+
+	% Dequeue used symbols from "old" queue
+	sorted_str =  sorted_str(3:length(sorted_str));
+	sorted_prob = sorted_prob(3:length(sorted_prob));
+
+	% Add new symbol back to "old" queue
+	sorted_str = [sorted_str, new_node];
+	sorted_prob = [sorted_prob, new_prob];
+
+	% Add new symbol to "new" queue
+	newq_str(rear) = new_node;
+	newq_prob(rear) = new_prob;
+	rear = rear + 1;
+end
+tree = [newq_str,init_str];
+tree_prob = [newq_prob, init_prob];
+
+% Sort all tree elements
+[sorted_tree_prob,indeces] = sort(tree_prob,'descend');
+sorted_tree = tree(indeces);
+
+parent(1) = 0;
+num_children = 2;
+for i = 2:length(sorted_tree)
+	% Extract my symbol
+	me = sorted_tree{i};
+
+	% Find my parent's symbol (search until shortest match is found)
+	count = 1;
+	parent_maybe = string(sorted_tree{i-count});
+	diff = strfind(parent_maybe,me);
+	while (isempty(diff))
+		count = count + 1;
+		parent_maybe = string(sorted_tree{i-count});
+		diff = strfind(parent_maybe,me);
+	end
+	parent(i) = i - count;
+end
+
+temp = sorted_tree{6};
+sorted_tree{6} = sorted_tree{7};
+sorted_tree{7} = temp;
+
+
+treeplot(parent);
+title(strcat('Huffman Coding Tree - "',symbols,'"'));
+
+display(sorted_tree)
+display(sorted_tree_prob)
+
+[xs,ys,h,s] = treelayout(parent);
+text(xs,ys,sorted_tree);
+
+for i = 2:length(sorted_tree)
+	% Get my coordinate
+	my_x = xs(i);
+	my_y = ys(i);
+
+	% Get parent coordinate
+	parent_x = xs(parent(i));
+	parent_y = ys(parent(i));
+
+	% Calculate weight coordinate (midpoint)
+	mid_x = (my_x + parent_x)/2;
+	mid_y = (my_y + parent_y)/2;
+
+	% Calculate weight (positive slope = 1, negative = 0)
+	slope  = (parent_y - my_y)/(parent_x - my_x);
+	if (slope > 0)
+		weight(i) = 0;
+	else
+		weight(i) = 1;
+	end
+	text(mid_x,mid_y,num2str(weight(i)));
+end
+
+for i = 1:length(sorted_tree)
+	% Initialize code
+	code{i} = '';
+
+	% Loop until root is found
+	index = i;
+	p = parent(index);
+	while(p ~= 0)
+		% Turn weight into code symbol
+		w = num2str(weight(index));
+
+		% Concatenate code symbol
+		code{i} = strcat(w,code{i});
+
+		% Continue towards root
+		index = parent(index);
+		p = parent(index);
+	end
+end
+
+codeBook = [sorted_tree', code']
+
+dict = cell(length(sorted_tree),5);
+dict(:,1) = sorted_tree;
+for i = 1:length(sorted_tree)
+    dict(i,2) = {sorted_tree_prob(i)};
+end
+
+for i = 1:length(sorted_tree)
+    for j = 1:length(sorted_tree)
+        if string(child(j)) == string(dict(i))
+            for k = 1:length(sorted_tree)
+                if string(child(j,2)) == string(dict(k,1))
+                    dict (i,3) = {k};
+                elseif string(child(j,3)) == string(dict(k,1))
+                    dict (i,4) = {k};
+                end
+            end
+        end
+    end
+end 
+dict(:,5) = code;
+
+%bin_seq = huffman_enc(sym_seq, dict);
+sym_seq = '000010110000111100000'
+nownode = 1;
+decoded_str = '';
+for i = 1:length(sym_seq)
+    if isempty(dict{nownode,3})
+        decoded_str = decoded_str+string(dict(nownode,1));
+        nownode = 1;
+    end
+    if sym_seq(i) == '0'
+        nownode = dict{nownode,3}
+    elseif sym_seq(i) == '1'
+        nownode = dict{nownode,4}
+    end
+end
+decoded_str = decoded_str + string(dict(nownode,1))
+
+#(c)
+
