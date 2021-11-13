@@ -1,0 +1,458 @@
+%(b)
+
+
+symbols = {'a','b','c','d','e','f','g','h'}
+prob =[0.2,0.05,0.005,0.2,0.3,0.05,0.045,0.15]
+
+
+dict = huffman_dict(symbols,prob);
+lengthsym = [];
+for i = 1:200
+    sym_seq_n_10 = '';
+    for j = 1:10
+        indexx = round(rand(1,1)*7)+1;
+        sym_seq_n_10 = string(symbols{indexx}) + sym_seq_n_10 
+
+    end
+    bit_seq = huffman_enc(sym_seq_n_10,dict)
+    lengthsym (i) = strlength(string(bit_seq))
+end
+    
+histogram(lengthsym)
+M = mean(lengthsym)
+
+function bin_seq = huffman_enc(sym_seq, dict);
+
+sym_seq = char(sym_seq)
+bin_seq = '';
+for i = 1:length(sym_seq)
+    for j = 1:size(dict,1)
+        h = sym_seq(i)
+        if string(dict{j,1}) == sym_seq(i)
+            bin_seq = bin_seq + string(dict{j,5});
+        end
+    end
+end
+
+end
+
+function sym_seq = huffman_dec(bin_seq, dict)
+
+nownode = 1;
+sym_seq = '';
+for i = 1:length(bin_seq)
+    if isempty(dict{nownode,3})
+        sym_seq = sym_seq+string(dict(nownode,1));
+        nownode = 1;
+    end
+    if bin_seq(i) == '0'
+        nownode = dict{nownode,3}
+    elseif bin_seq(i) == '1'
+        nownode = dict{nownode,4}
+    end
+end
+sym_seq = sym_seq + string(dict(nownode,1))
+end
+
+function dict = huffman_dict(symbols, prob)
+for i = 1:length(symbols)
+	sorted_str{i} = symbols(i);
+end
+
+% Save initial set of symbols and probabilities for later use
+init_str = sorted_str;
+init_prob = prob;
+
+sorted_prob = prob;
+rear = 1;
+
+child = {};
+counnnt = 1
+while counnnt < length(sorted_prob)+1
+    child (counnnt,1) = symbols(counnnt);
+    child (counnnt,2) = {0};
+    child (counnnt,3) = {0};
+    counnnt = counnnt+1;
+end 
+
+while (length(sorted_prob) > 1)
+	% Sort probs
+	[sorted_prob,indeces] = sort(sorted_prob,'ascend');
+
+	% Sort string based on indeces
+	sorted_str = sorted_str(indeces);
+
+	% Create new symbol
+
+	new_node = {string(sorted_str{2})+string(sorted_str{1})};
+    child (counnnt,1) = new_node;
+    child (counnnt,2) = {sorted_str{2}};
+    child (counnnt,3) = {sorted_str{1}};
+    counnnt = counnnt+1;
+	new_prob = sum(sorted_prob(1:2));
+
+	% Dequeue used symbols from "old" queue
+	sorted_str =  sorted_str(3:length(sorted_str));
+	sorted_prob = sorted_prob(3:length(sorted_prob));
+
+	% Add new symbol back to "old" queue
+	sorted_str = [sorted_str, new_node];
+	sorted_prob = [sorted_prob, new_prob];
+
+	% Add new symbol to "new" queue
+	newq_str(rear) = new_node;
+	newq_prob(rear) = new_prob;
+	rear = rear + 1;
+end
+tree = [newq_str,init_str];
+tree_prob = [newq_prob, init_prob];
+
+% Sort all tree elements
+[sorted_tree_prob,indeces] = sort(tree_prob,'descend');
+sorted_tree = tree(indeces);
+
+parent(1) = 0;
+num_children = 2;
+for i = 2:length(sorted_tree)
+	% Extract my symbol
+	me = sorted_tree{i};
+
+	% Find my parent's symbol (search until shortest match is found)
+	count = 1;
+	parent_maybe = string(sorted_tree{i-count});
+	diff = strfind(parent_maybe,me);
+	while (isempty(diff))
+		count = count + 1;
+		parent_maybe = string(sorted_tree{i-count});
+		diff = strfind(parent_maybe,me);
+	end
+	parent(i) = i - count;
+end
+
+temp = sorted_tree{6};
+sorted_tree{6} = sorted_tree{7};
+sorted_tree{7} = temp;
+
+
+treeplot(parent);
+title(strcat('Huffman Coding Tree - "',symbols,'"'));
+
+display(sorted_tree)
+display(sorted_tree_prob)
+
+[xs,ys,h,s] = treelayout(parent);
+text(xs,ys,sorted_tree);
+
+for i = 2:length(sorted_tree)
+	% Get my coordinate
+	my_x = xs(i);
+	my_y = ys(i);
+
+	% Get parent coordinate
+	parent_x = xs(parent(i));
+	parent_y = ys(parent(i));
+
+	% Calculate weight coordinate (midpoint)
+	mid_x = (my_x + parent_x)/2;
+	mid_y = (my_y + parent_y)/2;
+
+	% Calculate weight (positive slope = 1, negative = 0)
+	slope  = (parent_y - my_y)/(parent_x - my_x);
+	if (slope > 0)
+		weight(i) = 0;
+	else
+		weight(i) = 1;
+	end
+	text(mid_x,mid_y,num2str(weight(i)));
+end
+
+for i = 1:length(sorted_tree)
+	% Initialize code
+	code{i} = '';
+
+	% Loop until root is found
+	index = i;
+	p = parent(index);
+	while(p ~= 0)
+		% Turn weight into code symbol
+		w = num2str(weight(index));
+
+		% Concatenate code symbol
+		code{i} = strcat(w,code{i});
+
+		% Continue towards root
+		index = parent(index);
+		p = parent(index);
+	end
+end
+
+codeBook = [sorted_tree', code']
+
+dict = cell(length(sorted_tree),5);
+dict(:,1) = sorted_tree;
+for i = 1:length(sorted_tree)
+    dict(i,2) = {sorted_tree_prob(i)};
+end
+
+for i = 1:length(sorted_tree)
+    for j = 1:length(sorted_tree)
+        if string(child(j)) == string(dict(i))
+            for k = 1:length(sorted_tree)
+                if string(child(j,2)) == string(dict(k,1))
+                    dict (i,3) = {k};
+                elseif string(child(j,3)) == string(dict(k,1))
+                    dict (i,4) = {k};
+                end
+            end
+        end
+    end
+end 
+dict(:,5) = code;
+end
+
+%(C)
+
+%symbols = { 's0', 's1', 's2', 's3', 's4' };
+%prob = [ 0.26, 0.25, 0.20, 0.15, 0.14 ];
+symbols = {'a','b','c','d','e','f','g','h'};
+alp = [1,2,3,4,5,6,7,8]
+Rrr = [10,20,50,100,200,500,1000];
+N = [10,50,100];
+
+%symbols = 'jason'
+
+prob = [0.2,0.05,0.005,0.2,0.3,0.05,0.045,0.15];
+dict = huffman_dict(symbols,prob);
+lengthsym = [];
+lengthsym1 = [];
+for n = 1:length (N)
+    lengthsym = []
+for r = 1:length(Rrr)
+
+for i = 1:Rrr(r)
+    sym_seq_n_10 = '';
+    
+    for j = 1:N(n)
+        indexx = randsrc(1,1,[alp; prob])
+        sym_seq_n_10 = string(symbols{indexx}) + sym_seq_n_10 
+
+    end
+    bit_seq = huffman_enc(sym_seq_n_10,dict)
+    lengthsym (i) = strlength(string(bit_seq))
+end
+M = mean(lengthsym)
+lengthsym1(n,r) = M/N(n)
+end
+end    
+semilogx(Rrr,lengthsym1(1,:))
+hold on 
+semilogx(Rrr,lengthsym1(2,:))
+hold on 
+semilogx(Rrr,lengthsym1(3,:))
+legend('n = 10','n = 50', 'n = 100')
+yline(2.59999,'-','average codeword length in 1_d')
+yline(1.755,'-', 'entropy')
+xlabel('R')
+ylabel('average codeword length')
+grid on
+
+M = mean(lengthsym)
+%sym_seq_n_10 = 'abgehdfceb'
+
+%bit_seq = huffman_enc(sym_seq_n_10,dict)
+%sym_seq = huffman_dec(bit_seq, dict)
+
+function bin_seq = huffman_enc(sym_seq, dict);
+%sym_seq = 'gacab'
+sym_seq = char(sym_seq)
+bin_seq = '';
+for i = 1:length(sym_seq)
+    for j = 1:size(dict,1)
+        h = sym_seq(i)
+        if string(dict{j,1}) == sym_seq(i)
+            bin_seq = bin_seq + string(dict{j,5});
+        end
+    end
+end
+
+end
+
+function sym_seq = huffman_dec(bin_seq, dict)
+%sym_seq = '000010110000111100000'
+nownode = 1;
+sym_seq = '';
+for i = 1:length(bin_seq)
+    if isempty(dict{nownode,3})
+        sym_seq = sym_seq+string(dict(nownode,1));
+        nownode = 1;
+    end
+    if bin_seq(i) == '0'
+        nownode = dict{nownode,3}
+    elseif bin_seq(i) == '1'
+        nownode = dict{nownode,4}
+    end
+end
+sym_seq = sym_seq + string(dict(nownode,1))
+end
+
+function dict = huffman_dict(symbols, prob)
+for i = 1:length(symbols)
+	sorted_str{i} = symbols(i);
+end
+
+% Save initial set of symbols and probabilities for later use
+init_str = sorted_str;
+init_prob = prob;
+
+sorted_prob = prob;
+rear = 1;
+
+child = {};
+counnnt = 1
+while counnnt < length(sorted_prob)+1
+    child (counnnt,1) = symbols(counnnt);
+    child (counnnt,2) = {0};
+    child (counnnt,3) = {0};
+    counnnt = counnnt+1;
+end 
+
+while (length(sorted_prob) > 1)
+	% Sort probs
+	[sorted_prob,indeces] = sort(sorted_prob,'ascend');
+
+	% Sort string based on indeces
+	sorted_str = sorted_str(indeces);
+
+	% Create new symbol
+
+	new_node = {string(sorted_str{2})+string(sorted_str{1})};
+    child (counnnt,1) = new_node;
+    child (counnnt,2) = {sorted_str{2}};
+    child (counnnt,3) = {sorted_str{1}};
+    counnnt = counnnt+1;
+	new_prob = sum(sorted_prob(1:2));
+
+	% Dequeue used symbols from "old" queue
+	sorted_str =  sorted_str(3:length(sorted_str));
+	sorted_prob = sorted_prob(3:length(sorted_prob));
+
+	% Add new symbol back to "old" queue
+	sorted_str = [sorted_str, new_node];
+	sorted_prob = [sorted_prob, new_prob];
+
+	% Add new symbol to "new" queue
+	newq_str(rear) = new_node;
+	newq_prob(rear) = new_prob;
+	rear = rear + 1;
+end
+tree = [newq_str,init_str];
+tree_prob = [newq_prob, init_prob];
+
+% Sort all tree elements
+[sorted_tree_prob,indeces] = sort(tree_prob,'descend');
+sorted_tree = tree(indeces);
+
+parent(1) = 0;
+num_children = 2;
+for i = 2:length(sorted_tree)
+	% Extract my symbol
+	me = sorted_tree{i};
+
+	% Find my parent's symbol (search until shortest match is found)
+	count = 1;
+	parent_maybe = string(sorted_tree{i-count});
+	diff = strfind(parent_maybe,me);
+	while (isempty(diff))
+		count = count + 1;
+		parent_maybe = string(sorted_tree{i-count});
+		diff = strfind(parent_maybe,me);
+	end
+	parent(i) = i - count;
+end
+
+temp = sorted_tree{6};
+sorted_tree{6} = sorted_tree{7};
+sorted_tree{7} = temp;
+
+
+treeplot(parent);
+title(strcat('Huffman Coding Tree - "',symbols,'"'));
+
+display(sorted_tree)
+display(sorted_tree_prob)
+
+[xs,ys,h,s] = treelayout(parent);
+text(xs,ys,sorted_tree);
+
+for i = 2:length(sorted_tree)
+	% Get my coordinate
+	my_x = xs(i);
+	my_y = ys(i);
+
+	% Get parent coordinate
+	parent_x = xs(parent(i));
+	parent_y = ys(parent(i));
+
+	% Calculate weight coordinate (midpoint)
+	mid_x = (my_x + parent_x)/2;
+	mid_y = (my_y + parent_y)/2;
+
+	% Calculate weight (positive slope = 1, negative = 0)
+	slope  = (parent_y - my_y)/(parent_x - my_x);
+	if (slope > 0)
+		weight(i) = 0;
+	else
+		weight(i) = 1;
+	end
+	text(mid_x,mid_y,num2str(weight(i)));
+end
+
+for i = 1:length(sorted_tree)
+	% Initialize code
+	code{i} = '';
+
+	% Loop until root is found
+	index = i;
+	p = parent(index);
+	while(p ~= 0)
+		% Turn weight into code symbol
+		w = num2str(weight(index));
+
+		% Concatenate code symbol
+		code{i} = strcat(w,code{i});
+
+		% Continue towards root
+		index = parent(index);
+		p = parent(index);
+	end
+end
+
+codeBook = [sorted_tree', code']
+
+dict = cell(length(sorted_tree),5);
+dict(:,1) = sorted_tree;
+for i = 1:length(sorted_tree)
+    dict(i,2) = {sorted_tree_prob(i)};
+end
+
+for i = 1:length(sorted_tree)
+    for j = 1:length(sorted_tree)
+        if string(child(j)) == string(dict(i))
+            for k = 1:length(sorted_tree)
+                if string(child(j,2)) == string(dict(k,1))
+                    dict (i,3) = {k};
+                elseif string(child(j,3)) == string(dict(k,1))
+                    dict (i,4) = {k};
+                end
+            end
+        end
+    end
+end 
+dict(:,5) = code;
+end
+
+
+
+
+
+
